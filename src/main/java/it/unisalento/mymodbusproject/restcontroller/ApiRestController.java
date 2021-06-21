@@ -19,7 +19,7 @@ public class ApiRestController {
     ModbusTcpClient modbusTcpClient = new ModbusTcpClient("192.168.1.52", 502);
 
     @GetMapping(value="temperature", produces = MediaType.APPLICATION_JSON_VALUE)
-    public TelemetryDTO getTemperature() throws IOException, InvalidQuantityException, FunctionCodeNotSupportedException, ModbusException, InvalidStartingAddressException {
+    public TelemetryDTO getTemperature() throws IOException, InvalidQuantityException, FunctionCodeNotSupportedException, ModbusException, InvalidStartingAddressException, InterruptedException {
         TelemetryDTO telemetryDTO = new TelemetryDTO();
 
         //TO-DO
@@ -27,9 +27,10 @@ public class ApiRestController {
         modbusTcpClient.connect();
         //Recuperare la temperatura dal raspberry
         //1 = temperature
-        modbusTcpClient.writeHoldingRegister(0x01, 1);
-        int []temp = modbusTcpClient.readHoldingRegisters(0x02, 1);
-        System.out.println("ciao");
+        modbusTcpClient.writeHoldingRegister(0x01, 2);
+        int []temp = modbusTcpClient.readHoldingRegisters(0x01, 1);
+        telemetryDTO.setType("Temperature");
+        telemetryDTO.setValue((float)temp[0]);
         //Inserirla in TelemetryDTO
         //ritornare telemetryDTO
         return telemetryDTO;
