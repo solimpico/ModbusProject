@@ -24,7 +24,7 @@ public class ModbusTcpClient {
     private int port = 502;
     private String ipAddress;
     private Socket socket = new Socket();
-    private int connectTimeout = 2000;
+    private int connectTimeout = 10000;
     private boolean useUdp = false;
 
     private InputStream inputStream;
@@ -167,7 +167,8 @@ public class ModbusTcpClient {
      * @return Holding registers from Modbus server
      */
     public int[] readHoldingRegisters(int startingAddress, int quantity) throws IOException, ModbusException, InvalidStartingAddressException, InvalidQuantityException, FunctionCodeNotSupportedException {
-        return this.readHoldingRegisters(startingAddress, quantity, ByteOrder.BIG_ENDIAN);
+        int arr[] = this.readHoldingRegisters(startingAddress, quantity, ByteOrder.BIG_ENDIAN);
+        return arr;
     }
 
     /**
