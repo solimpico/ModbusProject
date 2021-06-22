@@ -2,11 +2,11 @@ package it.unisalento.mymodbusproject.dto;
 
 public class TelemetryDTO {
     String type;
-    Float value;
+    int value;
 
     public TelemetryDTO(){}
 
-    public TelemetryDTO(String type, Float value) {
+    public TelemetryDTO(String type, int value) {
         this.type = type;
         this.value = value;
     }
@@ -19,11 +19,11 @@ public class TelemetryDTO {
         this.type = type;
     }
 
-    public Float getValue() {
+    public int getValue() {
         return value;
     }
 
-    public void setValue(Float value) {
+    public void setValue(int value) {
         this.value = value;
     }
 }
