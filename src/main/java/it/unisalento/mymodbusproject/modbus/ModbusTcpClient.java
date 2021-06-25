@@ -178,7 +178,8 @@ public class ModbusTcpClient {
      * @param byteOrder The byte order of response
      * @return Holding registers from Modbus server
      */
-    public int[] readHoldingRegisters(int startingAddress, int quantity, ByteOrder byteOrder) throws IOException, ModbusException, InvalidStartingAddressException, InvalidQuantityException, FunctionCodeNotSupportedException {
+    public int[] readHoldingRegisters(int startingAddress, int quantity, ByteOrder byteOrder) throws IOException, ModbusException,
+            InvalidStartingAddressException, InvalidQuantityException, FunctionCodeNotSupportedException {
         if (startingAddress > 65535 || startingAddress < 0) {
             throw new IllegalArgumentException("Expected starting address range: 0 .. 65535");
         }
@@ -258,7 +259,8 @@ public class ModbusTcpClient {
      * @param startingAddress The address to write (starting from 0)
      * @param value The value to write
      */
-    public void writeCoil(int startingAddress, boolean value) throws IOException, ModbusException, InvalidStartingAddressException, InvalidQuantityException, FunctionCodeNotSupportedException {
+    public void writeCoil(int startingAddress, boolean value) throws IOException, ModbusException, InvalidStartingAddressException,
+            InvalidQuantityException, FunctionCodeNotSupportedException {
         if (startingAddress > 65535 || startingAddress < 0) {
             throw new IllegalArgumentException("Expected starting address range: 0 .. 65535");
         }
@@ -321,7 +323,8 @@ public class ModbusTcpClient {
      * @param startingAddress The address to write
      * @param value The value to write
      */
-    public void writeHoldingRegister(int startingAddress, int value) throws IOException, ModbusException, InvalidStartingAddressException, InvalidQuantityException, FunctionCodeNotSupportedException {
+    public void writeHoldingRegister(int startingAddress, int value) throws IOException, ModbusException, InvalidStartingAddressException,
+            InvalidQuantityException, FunctionCodeNotSupportedException {
         if (startingAddress > 65535 || startingAddress < 0) {
             throw new IllegalArgumentException("Expected starting address range: 0 .. 65535");
         }
