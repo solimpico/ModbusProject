@@ -57,10 +57,4 @@ public class ApiRestController {
         return status;
     }
 
-    @GetMapping(value = "/getMotorStatus", produces = MediaType.APPLICATION_JSON_VALUE)
-    public boolean getMotorStatus() throws IOException, InvalidQuantityException, FunctionCodeNotSupportedException, ModbusException, InvalidStartingAddressException {
-        modbusTcpClient.connect();
-        return modbusTcpClient.readCoils(0x10, 1)[0];
-    }
-
 }
