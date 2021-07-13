@@ -1,6 +1,6 @@
 # ModbusProject
 
-This project implements the back-end "ModbusProject". 
+This project implements the back-end of "ModbusProject". 
 
 The Tomcat server exposes three APIs: 
   for acquiring telemetry, 
