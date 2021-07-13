@@ -9,7 +9,7 @@ The Tomcat server exposes three APIs:
 
 The project is development using Java with the Spring framework (Springboot, Springweb).
 
-## Development server
+## Execute server
 
 Change your cwd with the command: "cd MyModbusProject/build/libs/" and run the server with "java -jar MyModbusProject-0.0.1-SNAPSHOT.jar".
 
