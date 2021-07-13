@@ -2,10 +2,7 @@
 
 This project implements the back-end of "ModbusProject". 
 
-The Tomcat server exposes three APIs: 
-  for acquiring telemetry, 
-  for switching on the actuator
-  for switching off the actuator.
+The Tomcat server exposes three APIs: 1) for acquiring telemetry, 2) for switching on the actuator 3) for switching off the actuator.
 
 The project is development using Java with the Spring framework (Springboot, Springweb).
 
