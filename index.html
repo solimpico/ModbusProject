@@ -1,7 +1,348 @@
 <!DOCTYPE html>
 <html>
 <body>
-<h1>Hello World</h1>
-<p>I'm hosted with GitHub Pages.</p>
+<h1>Modbus Project</h1>
+<h3>1 - INTRODUZIONE</h3>
+<p>
+    Il campo di maggiore applicazione dell’Internet of Things è sicuramente il campo industriale. 
+Nel corso del tempo, grandi e piccole industrie hanno iniziato ad integrare macchinari smart all’interno delle proprie fabbriche, permettendo un aumento dei livelli di efficienza e di sicurezza. Attualmente tale integrazione è uno dei principali obiettivi che l'industria si propone.
+In senno a ciò, un protocollo fortemente utilizzato per raggiungere questo obiettivo, è il protocollo Modbus. Esso garantisce alti livelli di performance e di sicurezza nella comunicazione dei dati.
+Di interesse per l’Internet of Things, è l’integrazione di questo protocollo con l’architettura TCP/IP.  Ciò è stato possibile grazie all’introduzione della versione ModbusTCP/IP che sfrutta le reti Ethernet per la connessione dei macchinari con l’esterno. L’introduzione di questa variante del protocollo di comunicazione ha garantito una maggior flessibilità, dato che, in principio, il suo funzionamento era basato su collegamenti seriali, rendendo le connessioni fisicamente più proibitive. Oggi è possibile controllare un macchinario semplicemente collegandosi al corrispondente indirizzo IP.
+Soprattutto in ambito industriale, è fondamentale eseguire una rapida prototipazione dei progetti al fine di poterne studiare la fattibilità e gli eventuali vantaggi.
+Quindi, l’obiettivo di questo progetto è quello di implementare un sistema completo in grado di comandare un macchinario industriale. Quest’ultimo viene simulato da un Raspberry che viene comandato da una dashboard. Viene utilizzato il protocollo Modbus per la comunicazione tra macchinario e gateway ed il protocollo HTTP per la comunicazione tra gateway e front-end.
+L’utilizzo del Raspberry permette una maggiore flessibilità nel caso in cui si voglia sperimentare l’integrazione di diverse tipologie di macchinari. 
+Il Raspberry è corredato sia di sensori (temperature ed umidità) che di attuatori (motorino elettrico). 
+Una dashboard si occuperà della visualizzazione dei dati e dell’impartizione dei comandi.
+Ogni tipologia di richiesta, che parte dal front-end, sarà elaborata da un applicativo Java (Spring), il quale inoltrerà la richiesta al Raspberry tramite protocollo Modbus. 
+L’applicativo Java si occuperà anche della conversione delle risposte (in arrivo dal Raspberry) in dati concreti e visualizzabili dall’utente finale.
+</p>
+
+<h3>2 - ANALISI DEI REQUISITI</h3>
+<p>
+    L’obiettivo del progetto Modbus è quello di realizzare un sistema completo in grado di garantire il monitoraggio ed il controllo di un dispositivo industriale (simulato) da interfaccia utente. Si prevede quindi un sistema che, esponendo un'interfaccia web agli utenti possa permettere di: a) ottenere dei dati sullo stato del macchinario, b) ottenere dei dati rilevati dai sensori a bordo macchina, c) inviare dei comandi al macchinario che, tramite degli specifici attuatori, potrà agire in risposta ai comandi ricevuti (es. azionare una ventola).
+Il sistema aggiorna i dati ogni sessanta secondi.
+Di seguito vengono riepilogati i principali utenti utilizzatori del sistema al fine di, successivamente, individuare i requisiti specifici di ognuno.
+1.	Utente Analista. È l'utente responsabile dell’analisi dei dati raccolti dal macchinario.
+2.	Utente Operatore. È l’utente responsabile del funzionamento del macchinario. Interagisce con i vari elementi funzionali del macchinario. 
+Gli utenti interessati all’analisi, dall’interfaccia web potranno acquisire i dati su richiesta. 
+Gli stessi utenti potranno osservare lo storico delle ultime cento rilevazioni sotto forma di grafico. Potranno osservare la media delle misurazioni ed il numero di occorrenze per ogni valore e per ogni dato di telemetria raccolto.
+Gli operatori potranno comandare il dispositivo da remoto – tramite interfaccia web - accendendo o spegnendo l’attuatore, osservandone lo stato aggiornato.
+In figura 2.1 è riportato il diagramma UML dei casi d’uso.
+<br>
+<img src = http://drive.google.com/uc?export=view&id=127BN7f4IiLdNq9dzHNzMUe89F8QQs-Xt>
+<h5>Figura 2.1 Diagramma UML dei casi d'uso </h5>
+<br>
+<h3>3 - STATO DELL'ARTE</h3>
+Pur essendo un protocollo pensato quarant’anni fa, Modbus è tutt’oggi fortemente utilizzato in ambito industriale e suscita l’interesse di molti utenti.
+<br>
+Su IEEExplore, cercando papers relativi a Modbus in ambito industriale, è possibile ottenere diversi lavori sull’integrazione del protocollo Modbus con altri protocolli classici dell’Internet of Things (tra cui http e MQTT). 
+Nei papers a seguire, così come accade nel progetto in esame, viene implementato un gateway che comunica con un macchinario utilizzando il protocollo Modbus e, allo stesso tempo, comunica con servizi esterni tramite MQTT o API REST. 
+<br>
+In [1] gli autori propongono un sistema basato su Modbus che espande le potenzialità dello stesso tramite il protocollo MQTT. Si è fatto utilizzo di una comunicazione seriale di tipo RTU integrando un Raspberry Pi 3B+ con un RS485 add-on board (fig. 3.1).
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1DQR9d29gbRbGVjU7QhAHXrfJfK8LyqYf>
+<h5>Figura 3.1 RS485 add-on board</h5>
+<br>
+L’architettura progettata in (fig. 3.2) è caratterizzata dal Raspberry che funge da gateway ed è in grado di comunicare con sensori e PLC tramite il protocollo ModbusRTU, da un lato, e con il Cloud tramite il protocollo MQTT, dall’altro.
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1vlKMJAPcwTVXu2OkoNIYIdqXLC5wq01m>
+<h5>Figura 3.2 Architettura progettata</h5>
+<br>
+Gli autori del paper concludono, affermando che una degna evoluzione di questo prototipo consista nell’inclusione di una connettività cellulare, al fine di risolvere il “limite” dettato dalla necessità di una connessione Ethernet per la comunicazione con il Cloud.
+A differenza di quanto progettato in questa relazione, gli autori hanno utilizzato una comunicazione Modbus di tipo RTU (Remote Terminal Unit). Questa tipologia di comunicazione necessita di un collegamento fisico tra gateway e PLC, intaccando la fruibilità del sistema.
+Evidentemente, il sistema può essere reso ulteriormente snello e conforme a quelli che sono i principi dell’Internet of Things, adoperando una comunicazione di tipo Modbus TCP con sensori e PLC. Infatti, utilizzando questa versione del protocollo, la comunicazione avviene tramite Ethernet sfruttando i pacchetti IP. Questo garantisce, comunque, dei tempi di latenza ridotti (presupponendo l’implementazione del gateway e dei sensori sotto la stessa rete), ma permette di migliorare la flessibilità del progetto. 
+</p>
+<h3>4 - ARCHITETTURA</h3>
+<p>
+    L’architettura progettata (fig. 4.1) per il sistema che si desidera realizzare è identificabile in tre macro aree: Front-end, Back-end e macchinario.
+Il Front-end implementa l’interfaccia utente utile alla gestione del macchinario da remoto. Esso sarà sviluppato in TypeScript utilizzando il framework Angular. Comunicherà con il Back-end tramite REST API.
+Il Back-end implementa il Gateway che farà da tramite per la comunicazione tra interfaccia utente e macchinario. Sarà sviluppato in Java adottando il framework Spring. Il gateway sarà in grado di comunicare con l’interfaccia utente tramite protocollo http (esponendo le API su indirizzo privato) e con il macchinario tramite protocollo Modbus. 
+Il macchinario sarà simulato utilizzando un Raspberry. Comunicherà con il Back-end utilizzando il protocollo Modbus.
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1O696aSBCqfXWlgovxZBeVs7bPpermRgo>
+<h5>Figura 4.1 Architettura del sistema</h5>
+<br>
+</p>
+<h3>5 - TECNOLOGIE UTILIZZATE</h3>
+<p>
+    Per l’implementazione hardware e software del sistema si è optato per l’utilizzo delle tecnologie più adatte al contesto di lavoro.
+L’impossibilità di accedere in un ambiente industriale per la sperimentazione del sistema su un macchinario reale, ha fatto scaturire la necessità di simulare il macchinario su un Raspberry Pi 3A+. Il Raspberry è stato scelto poiché, grazie alla sua ampia componentistica, permette di simulare una più vasta gamma di macchinari. Inoltre, esso offre un Sistema Operativo che permette una facile implementazione software.
+Per la simulazione del macchinario sono stati utilizzati sensori e attuatori per emulare i dati e le funzionalità prodotti da un macchinario industriale.
+Il sensore scelto è il DHT11; esso fornisce due dati di telemetria (temperatura ed umidità). Nonostante la presenza di una sua versione più performante (DHT22), si è optato per il suo utilizzo poiché già presente in laboratorio.
+Considerazioni analoghe valgono per il motore da 5V DC utilizzato come attuatore. Ipotizzando una sua implementazione reale, esso può essere interpretato come una ventola preposta al raffreddamento del macchinario. Il motorino, per essere controllato, necessita dell’utilizzo di un motor driver. Per quest’ultimo, si è optato per l’L293D per la sua affidabilità, versatilità e stabilità.
+Nell’implementazione hardware si è anche fatto utilizzo di una GPIO Extension Board con lo scopo di facilitare il cablaggio dei componenti.
+Per quanto riguarda la comunicazione macchinario/gateway, poiché si lavora in ambito industriale, si è optato per l’utilizzo del protocollo Modbus nella sua variante TCP/IP per garantire alti livelli di flessibilità e fruibilità. 
+Al fine di implementare, lato software, il protocollo Modbus sul macchinario, è necessario utilizzare una libreria specifica del protocollo. In Python si è fatto largo utilizzo della libreria PyModbus poiché permette una forte astrazione dalla logica protocollare ed è largamente supportata online.
+Sempre per quanto riguarda l’implementazione software del macchinario, è stata utilizzato il modulo “logging” di Python. Esso permette la stampa a video degli eventi eseguiti dalla libreria PyModbus. Il vantaggio principale nell’utilizzo di questo modulo è che tutti gli altri moduli Python utilizzati possono partecipare alla registrazione di eventi; il registro dell’applicazione può includere i propri messaggi integrati con i messaggi di moduli di terze parti .
+Per quanto concerne l’implementazione di Modbus sul gateway (sviluppato in Java) non è necessaria l’installazione di librerie esterne poiché è sufficiente l’utilizzo delle librerie incluse in Java.net (pre-installata in Java). Infatti in java l’implementazione di Modbus avviene tramite l’utilizzo di Socket.
+Per l’implementazione software del gateway, come già anticipato, si è fatto utilizzo del linguaggio di programmazione Java ed, in particolare, del framework Spring. Si è optato per l’utilizzo di tale framework poiché è tra i frameworks più utilizzati per lo sviluppo di web application (lato back-end).
+Discorsi analoghi valgono per lo sviluppo dell’interfaccia utente, implementata in TypeScript utilizzando Angular. Inoltre, si è optato per l’utilizzo di questo framework, in previsione di eventuali sviluppi futuri. Angular, infatti, permette una facile conversione da web application a mobile application. Questo permette di evolvere, in futuro, il sistema andando a prevedere delle postazioni mobili di controllo.
+</p>
+<h4>5.1 - Hardware: Raspberry Pi 3 Model A+</h4>
+<p>
+    Il Raspberry Pi 3A + (fig. 5.1.1, fig. 5.1.2, fig. 5.1.3) è una board dotata (non necessariamente) del sistema operativo proprietario Raspbian OS.
+    <br>
+<img src = http://drive.google.com/uc?export=view&id=1BOAIt7J2wSw07j8KleP4RhpP7Dbdyt6_>
+<h5>Figura 5.1.1 Raspberry Pi 3A+ vista superiore</h5>
+<br>
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1flPqldfHrSYMlX2qJI6VBBqy_dqfJ0KO>
+<h5>Figura 5.1.2 Raspberry Pi 3A+ vista inferiore</h5>
+<br>
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1vt_CgGJibF_kd2CUfmtK6_LbJJINfo2N>
+<h5>Figura 5.1.3 Raspberry Pi 3A+ vista laterale: ingressi</h5>
+<br>
+La scheda in questione offre un hardware interessante, nonostante il prezzo contenuto. Infatti, con un costo di circa 25€ è possibile dotarsi di: un processore Broadcom BCM2837B0, Cortex A53 (ARMv8) 64bit SoC, 1.4GHz quad-core; una SDRAM da 512 Mb LDDR2; un modulo Wi-Fi IEEE 802.11.b/g/n/ac che lavora a 2.4Ghz/5GHz; un modulo Bluetooth 4.2/BLE; un ingresso HDMI; una porta USB 2.0; un ingresso SD; un’uscita stereo a 4 poli con porta video composito ed una GPIO da 40 pin (fig. 5.1.4)
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1XcYwD-bz4Q8EIvDmoVyePKFk-sPv8gpP>
+<h5>Figura 5.1.4 Raspberry Pi 3A+: pinout</h5>
+<br>
+Il Raspberry Pi 3+ è dotato anche di una porta USB per l’alimentazione – per il corretto funzionamento della board è necessaria un’alimentazione da 5V/2.5A DC.
+Il sistema operativo di Raspberry ha recentemente cambiato nome in Raspberry Pi OS e si conferma, ancora, come un sistema operativo aperto, basato su Debian e opportunamente adattato all’hardware dei Raspberry Pi.
+Raspberry Pi Os offre molti ambienti di programmazione (fig. 5.1.5) tra cui BlueJ Java IDE, Geany, Node-RED e Thonny Python IDE.
+Per la realizzazione del progetto è stato utilizzato Thonny Python IDE con Python v3.
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1EXis8SfZxFzFcOzo2wIFpGEOWrqDmrcj>
+<h5>Figura 5.1.5 Ambienti di sviluppo pre-installati in Raspberry Pi OS</h5>
+<br>
+Facendo riferimento all’architettura descritta in figura 4.1, il Raspberry è collocabile nel back end. In particolare è stato utilizzato per implementare il macchinario simulato che svolge il ruolo di server nella comunicazione tra macchinario e gateway.
+</p>
+<h4>5.2 - Hardware: GPIO Extension Board</h4>
+<p>
+    L’estensore di GPIO (fig. 5.2.1) non è una componente hardware fondamentale alla realizzazione del progetto, ma sicuramente ne facilita l’implementazione. Esso permette di trasferire il pin-out del Raspberry su una millefori – facilitando il collegamento tra i vari componenti.
+    <br>
+    <img src = http://drive.google.com/uc?export=view&id=1rIAnpqv0hrTzW31UsSoePf6oVbwxiTei>
+    <h5>Figura 5.2.1 Raspberry Pi GPIO Extension Board</h5>
+    <br>
+</p>
+<h4>5.3 - Hardware: DHT11</h4>
+<p>
+    Il DHT11 (fig. 5.3.1) è un sensore di temperature e umidità prodotto dalla Groove.
+È caratterizzato da 3 pin – Vcc, Data, Gnd - da sinistra a destra.
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1xgweQJ-k3cW0bRHR6BgkV2xdoWZ5sPMh>
+<h5>Figura 5.3.1 DHT11</h5>
+<br>        
+Di seguito (fig. 5.3.2) è riportato il datasheet del sensore.
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1LSChhV7jz7Bn0ul2VemJSvdm_IvNiubw>
+<h5>Figura 5.3.2 Datasheet DHT11</h5>
+<br> 
+
+Il DHT11 è utilizzato al fine di simulare i sensori presenti sul macchinario industriale. È preposto all’acquisizione della telemetria da inviare al front-end, tramite il gateway.
+Per il suo funzionamento, lato software, è necessaria l’installazione della libreria Adafruit_DHT per Python3 con il seguente comando: 
+<br>
+<h5>pip3 install adafruit-circuitpython-dht</h5>
+<br>
+Essa è necessaria per la lettura dei dati dal sensore in Python.
+Nell’implementazione software, per garantire il corretto funzionamento della libreria, è necessario definire il sensore utilizzato ed il pin al quale è collegato (fig. 5.3.3).
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1w2YMXAPI8JMjWojcWAbsmQtMGJ_mjVNW>
+<h5>Figura 5.3.3 Configurazione libreria Adafruit_DHT per l'utilizzo del sensore DHT11</h5>
+<br> 
+</p>
+
+<h4>5.4 - Hardware: Motorino elettrico</h4>
+<p>
+    Il motorino elettrico utilizzato è un motore da 5V DC (fig. 5.4.1)
+Per l’implementazione hardware di quest’attuatore è fondamentale sottolineare una questione molto importante: a differenza di quanto accade con i sensori, non si può collegare direttamente un motore elettrico al Raspberry Pi, nonostante sia piccolo. Ciò non può avvenire perché un motorino elettrico richiede quantitativi di corrente di gran lunga maggiori rispetto a quelli che una board può garantire.
+Quindi, per l’implementazione verrà utilizzata una batteria alkalina da 9V in grado di alimentare il motore.
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1KPK-4c0OsZFHQKM_Tnk34FID98Jv2-ln>
+<h5>Figura 5.4.1 Motore elettrico 5V DC</h5>
+<br>
+ 
+Il motorino elettrico è utilizzato al fine di simulare l’attuatore presente sul macchinario industriale. Esso è collegato al Raspberry tramite l’utilizzo di un Motor Driver (L293D) necessario al controllo dello stesso. Il suo funzionamento è dipendente dalle richieste provenienti dall’utente utilizzatore.
+Per l’implementazione software del motorino è necessaria l’installazione della libreria RPi.GPIO tramite il comando:
+<br>
+<h5>apt-get install rpi.gpio</h5>
+<br>
+La sola libreria non è sufficiente all’utilizzo del motorino. Sono necessarie una serie di configurazioni utili al funzionamento dell’attuatore, di seguito (fig. 5.4.2) racchiuse in 4 funzioni.
+<br>
+<img src = http://drive.google.com/uc?export=view&id=14JSmBK0dVEbM6HpIY8iKlep0zjd90BZX>
+<h5>Figura 5.4.2 Configurazione e setup motore</h5>
+<br>
+ 
+Nelle prime linee di codice visualizzabili sopra, sono definiti i pin utilizzati per il collegamento del motore al Raspberry.
+Nella funzione setup() vengono invocati i metodi della libreria GPIO:
+- setMode(): per indiciare la numerazione BCM dei pin del Raspberry,
+- setup(): per settare i pin in modalità output.
+- PWN(): setta la frequenza di funzionamento del motore ad 1kHz.
+- start: setta il duty cycle del motore.
+Nella funzione motor() viene impostato, tramite il metodo output() di GPIO,  uno dei due output per il motore ad 1 logico e l’altro a 0 logico. Questo permette il funzionamento del motore in senso orario.
+Con la funzione destroy() viene gestito lo stop del motore (con la stessa logica del metodo motor() ).
+Ed, in fine, con il metodo loop() viene avviato il motore.
+</p>
+<h4>5.5 - Hardware: Motor Driver L293D</h4>
+<p>
+    Il motorino necessita l’utilizzo di un motor driver, fondamentale per il controllo del motore stesso.
+Nel progetto è stato utilizzato l’L293D (fig. 5.5.1)
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1d4tDl6kYEhY0p3hgwJh6OyZb2IZJZ5jp>
+<h5>Figura 5.5.1 L293D</h5>
+<br>
+
+L’293D, come si può notare dal pin-out riportato in figura 5.5.2, ha quattro pin di output e, dunque, può controllare quattro motorini unidirezionali oppure due motorini bidirezionali.
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1Uk7CQX0j_CtaIhIBKuAozbxCBD73MciM>
+<h5>Figura 5.5.2 L293D: pinout</h5>
+<br>
+</p>
+<h4>5.6 - Protocllo: Modbus</h4>
+<p>
+    Il protocollo Modbus nasce nel 1979, dall’azienda Modicon, per mettere in comunicazione i propri PLC . È un protocollo open source ed ha una struttura molto semplice che lascia spazio anche ad eventuali personalizzazioni.
+Il protocollo Modbus è definito come un protocollo Master/Slaves; è previsto un unico dispositivo master in grado di comunicare con più slaves. 
+Ogni dispositivo (master o slave) è dotato di registri analogici e discreti, che sono l'unico tramite per i dati e le comunicazioni. Infatti, quando il master vuole acquisire i dati dallo slave, comunica allo slave utilizzando un registro analogico. Alla ricezione, lo slave elaborerà la richiesta e scriverà il dato sul registro sul quale ha ricevuto la comunicazione.
+Analogamente, quando il master vuole impartire un comando allo slave, avanza una richiesta scrivendo su un registro discreto. Alla ricezione lo slave eseguirà il comando e riporterà, sullo stesso registro, il nuovo stato di funzionamento.
+Il master è l’unico dispositivo autorizzato a richiedere informazioni. Le richieste vengono avanzate tramite scrittura sui registri dello slave e le risposte vengono prelevate leggendo sugli stessi registri. Un dispositivo slave non può avanzare alcun tipo di richiesta; il suo compito è quello di rispondere al master scrivendo nel registro pre-accordato. 
+Per quanto riguarda la comunicazione tra master e slave, esistono due varianti di comunicazione in base al formato dei dati trasmessi. ModbusRTU (Remote Terminal Unit) sfrutta una rappresentazione dei pacchetti in formato esadecimale. Modbus ASCII è facilmente leggibile e ridondante. Entrambe le tipologie usano la comunicazione seriale: in Modbus RTU i comandi (o dati) sono seguiti da un campo checksum di tipo CRC (Cyclic Redundancy Check) mentre in Modbus ASCII viene utilizzato un campo checksum di tipo LRC (Logitudinal Redundancy Check). Se classifichiamo il protocollo in base al mezzo di comunicazione, esiste una terza variante che è rappresentata da Modbus TCP/IP che è molto simile a Modbus RTU ma sfrutta il protocollo TCP (Transfer Control Protocol) per la trasmissione dei pacchetti.
+Nel caso in cui non si sfrutti il protocollo TCP/IP viene utilizzato un collegamento fisico (fig. 5.6.1, fig. 5.6.2) tra master e slave
+Invece, nel caso di Modbus TCP i dati viaggiano in formato esadecimale (ricalcando quanto accade in Modbus RTU) ma sfruttando le reti Ethernet.
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1Jew512tKtM8VWJWxThaGHK_cFSSo3h05>
+<h5>Figura 5.6.1 RS 485</h5>
+<br>
+
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1enLXJkvaea_cbkUy7aucow1mOHh-ex3p>
+<h5>Figura 5.6.2 RS 232</h5>
+<br>    
+ 
+
+Una rete Modbus può includere oltre 250 dispositivi, tuttavia i ricetrasmettitori RS 485 non sono in grado di pilotare fisicamente così tanti dispositivi (tendenzialmente vi è un limite di 32 dispositivi nel caso di RS 485).
+I pacchetti inviati dal master includono l’indirizzo dello slave a cui è inviato il messaggio. Lo slave deve rispondere solo se il suo indirizzo è riconosciuto e deve rispondere entro un certo periodo di tempo – in caso contrario il master genererà un “errore di non risposta”.
+Un pacchetto Modbus (fig. 5.6.3) è formato da 6 campi prefissati:
+-	Indirizzo dello slave
+-	Function code
+-	Register number
+-	Register count
+-	Data
+-	Checksum
+
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1Dd2GAPsyAG6N31NDelfUASMi28DfUGPK>
+<h5>Figura 5.6.3 Pacchetto Modbus</h5>
+<br>
+
+
+L’indirizzo dello slave identifica univocamente il dispositivo all’interno di una Local Area Network.
+Il function code è utilizzato per definire l’operazione da compiere sul registro di memoria.
+I function codes più utilizzati sono osservabili nella figura 5.6.4 – essi sono un sottoinsieme di tutti i function codes previsti da Modbus.
+ 
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1Yv4-oq4JOE7fxuBS52nw2HDh8Xo3kv8W>
+<h5>Figura 5.6.4 Function Codes più utilizzati</h5>
+<br>
+
+Comunque, al fine di leggere o scrivere correttamente i dati, è necessario associare al codice funzione il register number.
+Il register number è l’indirizzo (espresso in esadecimale) che identifica il registro sul quale scrivere o leggere i dati.
+Il register count indica la quantità di dati da leggere o scrivere sul register number.
+Il campo data, eventualmente, contiene i dati da scrivere sul registro.
+Infine, il campo checksum è utilizzato per il controllo di eventuali errori con le precisazioni dette sopra.
+Per quanto riguarda Modbus TCP/IP; esso incapsula i pacchetti di Modbus RTU in un pacchetto TCP trasmesso sulle reti Ethernet. In questo caso, l’indirizzo dello slave non è di importanza primaria, poiché viene utilizzato l’indirizzo IP dello slave per l’instradamento ed il routing dei pacchetti.
+La porta definita dallo standard per la comunicazione tra master e slave è la 502.
+Il campo checksum, normalmente presente all’interno dei pacchetti Modbus, è omesso nel caso di pacchetti Modbus TCP poichè la gestione dell’errore è gestita dalla comunicazione via Ethernet.
+Modbus TCP rende il concetto di master/slave meno ovvio perché l’Ethernet permette una comunicazione peer to peer. Quindi, è opportuno parlare di comunicazione client/server in cui lo slave rappresenta il server ed il master ricopre il ruolo di client. Questa conformazione permette una comunicazione molti a molti: più masters possono comunicare con più slave. In questo contesto, l’associazione logica tra master e slave diventa una responsabilità del progettista.
+I tipi di registri referenziati sui dispositivi Modbus sono i seguenti:
+-	Coil (Output discreto)
+-	Discrete Input (Status input)
+-	Input Register
+-	Holding Register
+I Coil sono utilizzati per la lettura/scrittura di dati discreti (booleani).
+I Discrete Input sono utilizzati per la sola lettura di dati discreti.
+Gli Input Register sono utilizzati per la sola lettura dei dati analogici (interi).
+Gli Holding Register sono utilizzati per la lettura/scrittura di dati analogici.
+Essi vanno utilizzati in accordo ai codici funzione descritti precedentemente.
+Il protocollo Modbus definisce opportunamente le eccezioni.
+Quando uno slave riconosce un pacchetto ma identifica un errore ritornerà una risposta contente un Codice di Eccezione (invece dei dati).
+In questo caso, la risposta è formata dall’indirizzo dello slave, dal codice funzione richiesto con il bit più significativo settato e dal codice di eccezione.
+I codici di eccezione sono riportati in figura 5.6.5.
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1Y5kRaYWyC_HZQWyUgMZU7ROIntEcGGsq>
+<h5>Figura 5.6.5 Codici d'eccezione</h5>
+<br>
+
+Esemplificando, se il codice funzione inviato dal master è pari a 3 (Read Holding Registers) il codice funzione nella risposta dello slave sarà 0x83.
+In sintesi, quindi, quando un master vuole ottenere un dato da uno slave, si preoccupa di instaurare una connessione, scrivere sull’apposito registro analogico la richiesta di dati ed inviarla allo slave tramite protocollo Modbus TCP. Lo slave, che continuamente controlla la presenza di nuove richieste, leggerà dal registro predefinito la richiesta, acquisirà i dati dal sensore, sovrascriverà questi nel registro sopracitato e li spedirà al master su protocollo Modbus TCP. Alla ricezione dei dati, il master chiuderà la connessione con lo slave e sarà sua responsabilità convertire i dati dall’esadecimale al formato di interesse.
+È opportuno sottolineare che Modbus ASCII è una vecchia implementazione di Modbus che contiene tutti gli elementi di un pacchetto Modbus RTU ma espressi interamente in caratteri ASCII stampabili. Esso è considerato deprecato; è raramente utilizzato e non più descritto nella documentazione Modbus.
+Il protocollo Modbus, nella sua accezione TCP/IP, è stato utilizzato come protocollo di comunicazione tra macchinario e gateway in accordo con quanto accade nelle realtà industriali. 
+Dipendentemente dalle casistiche implementative, è comodo utilizzare i Coils e gli Holding Registers per la comunicazione tra master e slave poiché si ha la possibilità di scrivere e leggere dati sullo stesso registro.
+</p>
+<h4>5.7 - Software: Libreria PyModbus</h4>
+<p>
+    PyModbus  è un’implementazione del protocollo Modbus in Python che utilizza le librerie twisted/tornado/asyncio per l’implementazione delle comunicazioni asincrone. L’implementazione di un server asincrono garantisce alte performance. Secondo quanto riportato dalla documentazione ufficiale , il corretto funzionamento della libreria è garantito per versione Python maggiori della 2.7 (incluse 3.+).
+    La libreria permette la lettura e la scrittura sia nei registri analogici che discreti. Per installarla è sufficiente eseguire il comando:
+    <br>
+    <h5>pip3 install pymodbus</h5>
+    <br>
+    sul terminale del Raspberry.
+    La libreria è fondamentale anche per l’avvio del Server TCP in ascolto sulla porta 502 (in ogni caso settabile) – grazie alla funzione StartTCPServer(context, identity, address).
+    La libreria fornisce anche le funzioni per la lettura e scrittura sui registri. In particolare si fa riferimento alle funzione getValues(functionCode, registerAddress, quantity) e setValues(functionCode, registerAddress, data) – meglio descritte nel paragrafo 6.1.1
+    Quindi, nel presente progetto si fa uso della libreria nel simulatore del macchinario per la comunicazione con il gateway. I dettagli verranno discussi nel seguito.
+    In aggiunta, si fa notare che il Raspberry non è un vero macchinario, pertanto di seguito (fig. 5.7.1) vengono presentate le caratteristiche del porting fatto dalla libreria verso le funzionalità del Raspberry. 
+    In particolare, si è fatto utilizzo di una comunicazione a codice per ogni tipologia di richiesta. Nell’implementazione, infatti, è prevista la scrittura del code value 1 (da parte del gateway verso il macchinario) su registro analogico, per la richiesta di “Acquisizione dati di telemetria”. Mentre, per le richieste di esecuzione di comandi, il gateway scrive sul registro discreto il code value “True” nel caso di “Richiesta accensione motore”, oppure il code value “False” nel caso di “Richiesta spegnimento motore”.
+    <br>
+    <img src = http://drive.google.com/uc?export=view&id=1zF-74oRKHHiwwXT5jbc5GgxSaFDjQAk3>
+    <h5>Figura 5.7.1 Porting tra funzioni Modbus e operazione eseguita sul Raspberry </h5>
+    <br>
+    Per il corretto funzionamento della libreria PyModbus è necessaria la configurazione di alcuni parametri (fig. 5.7.2).
+    <br>
+    <img src = http://drive.google.com/uc?export=view&id=1AtH5UD5uh64YNNqL1WwUvDsRnFiOjOY4>
+    <h5>Figura 5.7.2 Configurazione parametri per PyModbus</h5>
+    <br>
+    
+    Seguendo quanto riportato nella documentazione ufficiale  , il costruttore ModbusSlaveContext() crea un modello di dati Modbus con ogni accesso ai dati immagazzinato nel blocco di memoria proprietario del dispositivo.
+    Il costruttore ModbusServerContext() ritorna una collezione di “slave contexts”. Se single è posto a True sarà trattato un unico context per diversi slave. Il context identifica il gruppo di lavoro (gli slaves presenti nella rete).
+    Il costruttore ModbusDeviceIdentification() fornisce l’identità del server.
+    
+</p>
+<h4>5.8 - Software: Libreria Logging (Python)</h4>
+<p>
+    Questo modulo Python definisce funzioni e classi che implementano un sistema di logging flessibile per applicazioni e librerie. Esso è stato utilizzato nel progetto al fine di stampare a video tutti gli eventi eseguiti dalla libreria PyModbus (vengono riportati le letture e le scritture sui registri, con i rispettivi codici funzione).
+Per il corretto funzionamento è necessario configurare alcuni parametri (fig. 5.8.1).
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1Sd0Xh2hHTqBBxGsfwWPN4kMR4OW5XnOk>
+<h5>Figura 5.8.1 Configurazione logging</h5>
+<br>
+La chiamata basicConfig() assicura che almeno un gestore di eventi sia disponibile.
+Con la chiamata getLogger() definiamo il logger. Se alla funzione non passiamo alcun parametro (come nel caso in figura 5.8.1) ritorna il logger radice della gerarchia, se gli si passa un nome, la funzione ritorna il logger corrispondente al parametro passato alla funzione.
+Con la chiamata setLevel() viene settato la “sensibilità agli eventi”. Esemplificando, con il
+parametro logging.DEBUG settiamo un limite di soglia pari a 10 che identifica un livello di informazioni essenziale, secondo quanto riportato nella documentazione ufficiale 
+
+</p>
+<h4>5.9 - Framework: Spring</h4>
+<p>
+    Spring  è un framework di programmazione Java che permette di implementare facilmente le applicazioni web.
+Incorpora vari server, tra cui Tomcat, Jetty o Undertow e configura automaticamente le librerie di terze parti (dipendenze incluse).
+In particolare sono stati utilizzati due servizi di Spring:
+-	SpringWeb permette l’implementazione delle API Web. Sfruttando le Annotation (@Annotation) è possibile implementare un server web in grado di rispondere alle chiamate tipiche di un’applicazione REST (get, put, post, delete, ecc) del protocollo HTTP.
+-	SpringBoot permette di deployare applicazione contenenti l’intero ambiente di esecuzione (tra cui il server TomCat).
+Nell’architettura proposta nel capito quattro, Spring permette un’efficiente implementazione del gateway. Esso appartiene al back-end ed è l’elemento fondamentale per la comunicazione tra Raspberry e interfaccia utente. È l’unico in grado di interfacciarsi con due diversi protocolli di comunicazione (Modbus e http).
+</p>
+<h4>5.10 - Framework: Angular</h4>
+<p>
+    Angular  è un framework per l’implementazione di interfacce grafiche basato su TypeScript (e html).
+Angular è basato sui “Components” che sono gli elementi base per la costruzione di web application scalabili.
+Inoltre, il suo utilizzo garantisce un paniere di librerie “ben integrate”, che permettono l’implementazione di una grande varietà di features (incluso il routing, il management e la comunicazione client-server).
+Per eseguire Angular sulla propria macchina è necessario installare preventivamente node.js e npm (che è un gestore di librerie).
+Successivamente è possibile procedere con l’installazione  di Angular con il seguente comando:
+<br>
+<h5>npm install -g @angular/cli</h5>
+Dopo avere eseguito l’installazione, è possibile procedere nel proprio terminale con il comando :
+<br>
+<h5>ng new myApp</h5>
+<br>
+Dove “ng” sta per Angular, “new” è un comando Angular usato per la creazione di nuovi progetti e “myApp” è il nome del progetto che si vuole realizzare.
+Il tool pone una serie di domande riguardanti le caratteristiche del progetto,  in particolare chiede lo stile che si vuole conferire al progetto (SCSS è quello consigliato) e se si vuole  includere, o meno, il routing.
+Il routing è una parte fondamentale di applicativi grafici complessi, poiché permette la navigazione tra pagine. Realmente, un’applicazione Angular è realizzata in una singola pagina web, ma tramite il routing è possibile dare l’illusione che si navighi tra le varie sezioni dell’applicazione.
+Il tool, quindi, provvede automaticamente al download dei pacchetti necessari al progetto.
+Eseguita la creazione del progetto è sufficiente spostarsi nella cartella appena creata dal tool ed eseguire il comando:
+ng serve
+che compila il progetto e lo avvia (tipicamente su http://localhost:4200).
+All’avvio del nuovo progetto si può osservare un’applicazione già funzionante con riferimento alla documentazione necessaria per la personalizzazione del progetto.
+Angular è stato utilizzato per l’implementazione dell’interfaccia utente. Questo è l’unico elemento di front end utilizzato per l’interazione dell’utente con il sistema. Essa è in grado di comunicare con il gateway tramite REST APIs.
+
+</p>
 </body>
 </html>
