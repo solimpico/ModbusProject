@@ -344,5 +344,326 @@ All’avvio del nuovo progetto si può osservare un’applicazione già funziona
 Angular è stato utilizzato per l’implementazione dell’interfaccia utente. Questo è l’unico elemento di front end utilizzato per l’interazione dell’utente con il sistema. Essa è in grado di comunicare con il gateway tramite REST APIs.
 
 </p>
+<h3>6 - SOLUZIONE PROPOSTA</h3>
+<p>
+    In questa sezione vengono presentati i dettagli implementativi della soluzione proposta. 
+    In particolare, a partire dall'architettura presentata nella Sezione 4, verranno analizzati i dettagli di ogni singola componente.
+    Come anticipato nel paragrafo 5.6, per la comunicazione in MODBUS è necessario disporre di un dispositivo master ed 
+    un dispositivo slave. Il primo si occupa di avanzare le richieste allo slave ed il secondo ha il compito di elaborare le richieste e 
+    di rispondere al master. In questo progetto, quindi, per sviluppare le funzionalità previste per il macchinario è stato necessario 
+    implementare entrambi i dispositivi. Dunque il macchinario ricopre il ruolo di slave ed il gateway ricopre il ruolo di master. 
+    Di seguito vengono forniti i dettagli delle diverse implementazioni.
+
+</p>
+<h4>6.1 - Macchinario</h4>
+<p>
+    Come anticipato nella Sezione 4, nell'ambito di questo progetto universitario si è deciso di simulare un macchinario MODBUS. Tale scelta è dettata dall'impossibilità di accedere fisicamente ad un macchinario reale.
+Pertanto, come già discusso nella sezione 5 "Tecnologie Utilizzate", si sono analizzate diverse possibilità utili a implementare tale sistema. La soluzione più ottimale disponibile in rete è quella presente al link che presenta la libreria PyModbus. La libreria mette a disposizione degli sviluppatori diversi strumenti per la lettura/scrittura sui registri e per l’esecuzione del server con un alto livello di astrazione. Gli sviluppatori suggeriscono l'utilizzo della libreria su versioni di Python superiori alle 2.7.
+Per il corretto funzionamento, gli sviluppatori suggeriscono di sfruttare le funzioni getValues() e setValues() per, rispettivamente, leggere e scrivere dati dal/sul registro passato come parametro alla funzione. Un’altra funzione fondamentale è StartTcpServer() – utile all’avvio del server. Queste funzioni sono fondamentali nell’implementazione di applicazioni Python appositamente progettate ed in grado di colloquiare con il dispositivo tramite i metodi forniti dalla libreria stessa.
+In questo progetto, il macchinario simulato è sviluppato utilizzando un Raspberry Pi 3A+ al quale sono stati collegati sensori ed attuatori. In particolare, si è utilizzato un sensore di temperatura ed umidità per la raccolta dei dati di telemetria ed un motorino elettrico per la definizione dell’attuatore. 
+</p>
+<h5>6.1.1 - Implementazione software: Macchinario (Python)</h5>
+<p>
+    Per l'implementazione del macchinario, dopo aver concluso la fase preliminare di installazione di PyModbus (descritta nel capitolo 5), è stato necessario procedere con la scrittura del codice Python da eseguire su un Raspberry Pi 3 Model A+.
+Come spiegato nel paragrafo 5.6, il protocollo Modbus prevede la scrittura su registri sia dei comandi che dei dati. Pertanto, per poter elaborare una richiesta è necessario prima di tutto interfacciarsi con i registri (verificando la presenza di eventuali richieste), eventualmente elaborare la richiesta e aggiornare i valori sui registri. Tali operazioni sono rese possibili dalle istruzioni riportate in fig. 6.1.1.1.
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1nMV04SbIDb13JPvs_AvjOr_2aydCbYh_>
+<h5>Figura 6.1.1.1 Funzione per la lettura e scrittura sui registri</h5>
+<br>
+Come detto nel paragrafo 5.6, si ha la necessità di creare un codice interno (esplicabile nell’utilizzo di un code value) utile all’identificazione delle richieste. In questo caso, rispettando quanto definito dal protocollo Modbus, si utilizza il codice funzione 3 (Lettura e scrittura su Holding Register) con code value 1 per l’invio di richiesta di “acquisizione dati di telemetria”.
+In maniera analoga, viene utilizzato il codice funzione 5 (definito da Modbus: Lettura e scrittura su Coil) per la richiesta di “esecuzione comando” utilizzando i code values True o False.
+Procedendo in sequenza, con il metodo log.debug() viene stampato a video “Updating Context” al fine di informare circa l’aggiornamento del contesto.
+Successivamente viene prelevato il primo elemento dell’array passato come argomento (il context). Viene prelevato solo il primo elemento poiché nell’implementazione adottata è presente un unico slave ed un unico master.
+Con l’istruzione successiva viene definito la funzione da utilizzare; poiché viene prima controllata la presenza di richieste di dati, viene definita la funzione 3 utile alla lettura e scrittura sui registri analogici. Successivamente viene definito lo slave_id (poco rilevante per quanto detto nei capitoli precedenti riguardanti l’utilizzo di Modbus TCP) e l’addressToRead che è l’indirizzo che identifica il blocco dati dal quale lo slave deve leggere il code value ricevuto.
+Nella linea di codice successiva viene prelevato il dato (code value) dal registro. Partendo dal context riferito allo slave, viene invocato il metodo getValues(). Questo metodo necessita come parametri la funzione da eseguire, l’indirizzo da cui iniziare a leggere, e la quantità di dati da leggere (In realtà, per quanto riguarda la quantità, in questa prima fase sarebbe sufficiente leggere un unico dato, il code value, ma ne vengono prelevati due per preparare l’array ad ospitare i due dati di telemetria).
+Se il code value è pari ad 1 (per la logica di funzionamento descritta precedentemente) lo slave acquisisce i dati dal sensore, tramite la libreria Adafruit_DHT, e li sovrascrive nell’array “values[]”. A questo punto vengono stampate le nuove informazioni di log e viene settato il registro con la funzione setValues(). Essa prende come parametri la funzione da utilizzare, l’indirizzo da cui iniziare a sovrascrivere ed i valori da scrivere.
+In maniera del tutto analoga viene effettuato il controllo sull’eventuale presenza della richiesta “esecuzione comando”. Questa volta, utilizzando il codice funzione 5 (lettura e scrittura su registro discreto) viene verificato il valore presente nel registro 0x10. Se il valore discreto è pari a “True” viene acceso il motore, altrimenti, se il valore discreto letto è pari a “False” il motore viene spento. 
+Infine, nelle linee di codice a seguire (fig. 6.1.1.2), vengono riportati i comandi per la definizione di un loop grazie al quale il macchinario è continuamente in ascolto e quindi in grado di rilevare nuove richieste e fornire i dati richiesti o ad eseguire i comandi ricevuti. Il Metodo LoopingCall richiede due parametri: la funzione da eseguire in loop e, l’eventuale parametro da passare alla funzione.
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1mnR5ZmAr7a7K9aDkhEabGkln0Jd9j5c9>
+<h5>Figura 6.1.1.2 Chiamata della funzione "updating_writer()"</h5>
+<br>
+Vengono invocati anche I metodi setup() e destroy(), descritti nel paragrafo 5.4, fondamentali per il setup del motore e per evitare eventuali accensioni indesiderate (i valori del pin-out del Raspberry all’accensione sono sconosciuti, se fossero nella giusta configurazione farebbero partire senza autorizzazione il motore).
+Con loop.start() avviamo il loop definito in precedenza, impostando un time-out pari a 0 per garantire la massima reattività del macchinario.
+Nell’ultima riga di codice viene utilizzato il metodo StartTcpServer() di PyModbus. Questo metodo avvia un server TCP asincrono di Modbus. Ad esso vengono passati come parametri il context, l’identità del macchinario e l’indirizzo IP sul quale risiede.
+All’avvio del macchinario simulato, l’output stampato a video, grazie alla libreria logging, è rappresentato in figura 6.1.1.3. Esso ci informa sulla lettura dei registri riportandoci la function code utilizzata ( fc – [3] oppure fc – [5]).
+<br>
+<img src = http://drive.google.com/uc?export=view&id=12N9a0-eNw1o2N6TUuCCSYLaxqd-_6sTe>
+<h5>Figura 6.1.1.3 Output macchinario simulato</h5>
+<br>
+</p>
+<h5>6.1.2 - Implementazione hardware: Macchinario</h5>
+<p>
+    Per quanto riguarda l’implementazione del macchinario simulato (fig. 6.1.2.1 e fig. 6.1.2.2) è stato utilizzato un Raspberry Pi 3A+ in concomitanza al sensore di temperatura ed umidità DHT11 ed ad un motorino elettrico da 5V DC.
+    <br>
+    <img src = http://drive.google.com/uc?export=view&id=1X_AKXLaWHN5csUtPaGwfsEeG_yWLXpfJ/>
+    <h5>Figura 6.1.2.1 Macchinario simulato</h5>
+    <br>
+    <img src = http://drive.google.com/uc?export=view&id=1Qi0IXERbh_RO50rwlNTdSL8UDxvw_RBf>
+    <h5>Figura 6.1.2.2 Macchinario simulato: pin utilizzati</h5>
+    <br>              
+			
+In particolare, seguendo la numerazione dei pin BCM, il sensore DHT11 è stato collegato al pin 4. 
+Il motor driver è collegato ai pin 17, 22 e 27 del Raspberry. Di conseguenza il motorino è collegato ai pin 3 e 6 del motor driver. 
+Il motor driver è alimentato con alimentazione esterna (Batteria alkalina da 9V) mentre il sensore di temperatura e umidità è alimentato 
+direttamente dal Raspberry.
+</p>
+<h4>6.2 - Gateway</h4>
+<p>
+    Nell’architettura master/slave prevista da Modbus, l’altro ruolo fondamentale è svolto dal master. 
+    Nella implementazione proposta, il Gateway svolge il ruolo di master.
+    Così come descritto nel capitolo 4, il gateway ha il ruolo fondamentale di accogliere le richieste dal front-end e 
+    veicolarle allo slave.
+    Per quanto detto nel capitolo 5, il gateway è implementato in Java utilizzando il framework Spring. 
+    Esso è stato implementato su un personal computer che espone le API REST (verso il front-end) in locale. 
+    Per quanto riguarda la comunicazione Modbus con il macchinario, l’implementazione software prevista in Java è differente da quella 
+    utilizzata in Python. In Java, infatti, non si ha la necessità di installare alcun tipo di libreria esterna poiché la comunicazione 
+    peer to peer avviene utilizzando l’oggetto Socket di Java.
+</p>
+<h5>6.2.1 - Implementazione software: Gateway (Java)</h5>
+<p>
+    Per quanto riguarda l’implementazione software della comunicazione tramite il protocollo Modbus con il macchinario, 
+    l’applicazione è sviluppata in diversi package contenenti le classi usate per la comunicazione.
+    Tra i package di particolare rilievo troviamo il package di utility “modbus” che contiene al suo interno le classi Java 
+    necessarie all’interazione con lo slave.
+    In particolare, all’interno della classe “ModbusTcpClient.java” è definito il metodo “connect()” (fig. 6.2.1.1), 
+    utile alla connessione con lo slave.
+
+    <br>
+    <img src = http://drive.google.com/uc?export=view&id=1y3xyyP5AxLYxcOamJ6GnASmNGfMM8qMw>
+    <h5>Figura 6.2.1.1 Funzione connect()</h5>
+    <br>
+
+    Si noti, come nel costruttore della classe sia necessario indicare l’indirizzo IP dello slave e il numero di porta. Queste informazioni verranno poi utilizzate nella connect().
+La classe Socket utilizzata, implementa i client sockets (anche noti come sockets). Un socket è un endpoint di una comunicazione tra macchine.
+Con il costruttore DataOutputStream (appartenente al package java.io) definiamo una classe Java capace di scrivere tipologie primitive di dati (byte) in uno stream di output. Passando come argomento al costruttore “this.socket.getOutputStream()” intercettiamo il traffico in uscita dal socket. In maniera analoga, viene avvalorato l’attributo “inputStream” con il traffico in ingresso al socket.
+Altri metodi implementati ed utilizzati all’interno del progetto sono: “readCoils()” (fig. 6.2.1.2), “readHoldingRegister()” (fig. 6.2.1.3), “writeCoil()” (fig. 6.2.1.4) e “writeHoldingRegister()” (fig. 6.2.1.5). Queste funzioni sono state implementate per la scrittura e la lettura sui/dei registri analogici e discreti.
+
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1X0OOuE4CLE9-diXcRtfPAorQV7QI9L-L>
+<h5>Figura 6.2.1.2 Funzione readCoils()</h5>
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1Dsd1dymHqPqsOQjPb6h2sm0rP4dIITKv>
+<h5>Figura 6.2.1.3 Funzione readHoldingRegister()</h5>
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1R3v59CVNEX4zl6LOjMAKXuc_Nsbx9KQH>
+<h5>Figura 6.2.1.4 Funzione writeCoil()</h5>
+<br>
+<img src = http://drive.google.com/uc?export=view&id=/1o79PbjwJ5LM-xw4sTtSZgalcxRCrcXnd>
+<h5>Figura 6.2.1.5 Funzione writeHoldingRegister()</h5>
+<br>
+
+In tutte e quattro le funzioni è stato implementato un controllo sulla correttezza degli argomenti passati. 
+Superato il controllo viene istanziato un oggetto di tipo RequestFrame dettagliato in seguito.
+Successivamente, viene invocato il metodo toRequest(), della classe RequestFrame, che ritorna i bytes dell’oggetto RequestFrame. 
+In seguito viene avvalorato l’attributo response con il metodo tcp() che restituisce un array di bytes contente la risposta del macchinario (lo slave).
+Il metodo tcp() (fig. 6.2.1.6) implementato si occupa di scrivere la request sull’outputStream (del socket) e di ritornare l’inputStream (sempre del socket) contenente la risposta del macchinario. 
+ 
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1p58aOhj2b2tzCBfsh7FsuAcIHgKRDxiY>
+<h5>Figura 6.2.1.6 Metodo tcp() della classe RequestFrame</h5>
+<br>
+
+Il metodo tcp() scrive sull’outputStream del socket tramite la funzione write() e legge dall’inputStream del socket tramite la funzione read().
+Notare come, nelle funzioni preposte alla lettura dei registri (ReadHoldingRegister() e ReadCoils()), coerentemente con quanto anticipato nei capitoli precedenti, si è provveduto alla conversione del dato in arrivo dal macchinario da byte in booleano  o interi (dipendentemente della funzione considerata) prima di ritornarlo alla funzione chiamante.
+Dunque, la classe RequestFrame (fig. 6.2.1.7) è stata implementata al fine di definire un oggetto Java che identificasse il pacchetto Modbus descritto nel paragrafo 5.6.
+
+<br>
+<img src = http://drive.google.com/uc?export=view&id=/1EnPoCoYsBrSMbjfotn8xfDr6zchUoa5X
+<h5>Figura 6.2.1.7 Classe RequestFrame: attributi e costruttore</h5>
+<br>
+
+Nella classe RequestFrame, tra i vari attributi è definito anche lo “unitIdentifier” che, al pari di quanto fatto nel codice Python del macchinario, definisce l’id del dispositivo (del gateway che svolge il ruolo di master in questo caso). Ovviamente questo ha un valore fissato diverso rispetto a quello del macchinario.
+Essa contiene al suo interno alcuni metodi richiamati nelle funzioni preposte alle operazioni sui registri. In particolare, il metodo appendData() (fig. 6.2.1.8) ritorna la classe RequestFrame aggiornata, cioè contenente i dati che gli si sono passati come argomento alla funzione.
+ 
+<br>
+<img src = http://drive.google.com/uc?export=view&id=/1KlGh4CQw3Y0TaHFy7DvSr-n5FHd1VwZL>
+<h5>Figura 6.2.1.8 Metodo appendData() della classe RequestFrame</h5>
+<br>
+
+Nel metodo, l’attributo data è una lista di byte definita nella classe RequestFrame.
+In sintesi, quando si vuole avanzare una request, occorre aprire una connessione socket con il macchinario, invocare, ad esempio, una funzione di scrittura su registro, instanziare un oggetto di tipo RequestFrame che identifica il pacchetto Modbus, trasformalo in byte e spedirlo attraverso il socket, tramite la funzione tcp(). È compito di quest’ultima ritornare la response associata alla request appena effettuata.
+Per quanto riguarda la comunicazione tra gateway e front-end tramite REST APIs è stata implementata la classe ApiRestController (contenuta nel package RestController) che gestisce le richieste in arrivo dal front end, le elabora inoltrandole allo slave e risponde in maniera opportuna.
+Nella fattispecie sono definite tre REST API.
+La prima (GET), illustrata in figura 6.2.1.9, è dedicata all’acquisizione dei dati di telemetria.
+ 
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1FO0ncMpHBbqrqo-hLsyxBd0iSg0XaOib>
+<h5>Figura 6.2.1.9 API REST: /getTemperatureAndHumidity</h5>
+<br>
+
+Come è possibile notare, sfruttando l’annotation @GetMapping (fornita da SpringWeb) possiamo, in modo automatico, definire una nuova API indicando il path nel quale è allocata la risorsa e la tipologia di dato prodotto o ritornato dall’API.
+TelemetryDTO è una classe di Data Transfer Object, ovvero una classe utilizzata come contenitore dei dati che viaggiano dal back end al front end. Essa viene automaticamente trasformata in JSON grazie alla variabile produces definita nell’Annotation. È responsabilità di questo metodo invocare le funzioni per:
+-	Collegarsi al macchinario utilizzando la funzione connect();
+-	Richiedere la telemetria scrivendo sul registro analogico il code value 1, tramite la funzione writeHoldingRegisters
+-	Acquisire la risposta del macchinario, leggendo i dati dal registro analogico, tramite la funzione readHoldingRegisters.
+-	Chiudere la connessione tramite la funzione disconnect().
+Le altre due API (fig. 6.2.1.10 e fig. 6.2.1.11) sono dedicate al controllo dell’attuatore, in questo caso, nel pieno rispetto dell’architettura REST, viene definita una PUT, piuttosto che una GET, poiché si sta cercando di “inserire” qualcosa (un comando).
+ 
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1KgqcY2_Rey7aqq5EaRCFyp1OMLUUKSId>
+<h5>Figura 6.2.1.10 API REST: /motorOn</h5>
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1HiJz_iTF9hEWdg8qM_NTqyenjiERSx6J>
+<h5>Figura 6.2.1.10 API REST: /motorOff</h5>
+<br>
+ 
+In maniera analoga a quanto implementato nella GET API vista precedentemente, è responsabilità di questi due metodi instaurare una connessione con il macchinario. Inoltre, scrivono sul registro discreto lo stato desiderato dell’attuatore (True = ON, False = OFF), tramite la funzione writeCoil. Successivamente leggono lo stato aggiornato, tramite la funzione readCoils, chiudono la connessione e ritornato lo stato al front-end.
+Gli indirizzi esadecimali passati alle funzioni di scrittura e lettura sui registri sono coerenti con quelli utilizzati in Python nell’implementazione software del macchinario.
+
+All’avvio, il gateway stampa (fig. 6.2.1.12) tutte le informazioni relative allo start dell’applicazione – incluso l’avvio del server Tomcat sul quale gira.
+ 
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1j1ohOGD408mQwbHBP2P1F5fxgobMqovI>
+<h5>Figura 6.2.1.12 Tomcat server - Gateway</h5>
+<br>
+
+L’applicazione Spring è costantemente in ascolto sulla porta 8080 per ricevere ed elaborare richieste dal front end; 
+inoltrandole al macchinario simulato. La comunicazione tra Gateway e Raspberry avviene sulla porta 502 in accordo con quanto 
+definito dal protocollo ModbusTCP/IP.
+</p>
+<h4>6.3 - Interfaccia utente</h4>
+<p>
+    L’interfaccia utente implementata garantisce il controllo del macchinario da remoto. Essa comunica esclusivamente con il gateway tramite API REST, sfruttando il protocollo http.
+L’interfaccia utente prevista per il progetto in esame, include funzioni di visualizzazione dei dati, richiesta dati e di esecuzione di comandi. 
+I dati sono sottoposti a diverse tipologie di analisi fruibili dall'utente interessati ad essi. In particolare è possibile: 
+-	osservare lo storico delle misurazioni raccolte (tramite grafico)
+-	osservare i valori di occorrenza dei valori
+-	osservare una media dei dati raccolti
+-	osservare l’ultimo dato acquisito.
+I comandi che possono essere eseguiti tramite interfaccia utente sono:
+-	Accensione motore
+-	Spegnimento motore
+-	Aggiornamento dati di telemetria
+</p>
+<h5>6.3.1 - Implementazione software: Interfaccia utente (TypeScript)</h5>
+<p>
+    In questo paragrafo viene mostrata l'interfaccia utente (fig. 6.3.1.1) disegnata per essere eseguita sul front-end. 
+    <br>
+<img src = http://drive.google.com/uc?export=view&id=1h8r6myNA1kF3eim7qa3PG7UygecIcMZp>
+<h5>Figura 6.3.1.1 Interfaccia utente</h5>
+<br>
+
+La dashboard appena mostrata è stata sviluppata in linguaggio di programmazione TypeScript con il framework Angular.
+I progetti Angular sono organizzati in Componenti e, nel caso specifico, è stato sufficiente implementare un unico Componente (dunque un’unica pagina) che racchiude in sé le funzionalità utili al monitoraggio ed al controllo del macchinario simulato.
+Il progetto Angular è organizzato in tre livelli: 
+-	Il primo livello è rappresentato dal documento HTML necessario alla creazione della pagina web (fig. 6.3.1.2);
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1eq3AlA6FtF2sflKepI23ZeSq0hI7TlS0>
+<h5>Figura 6.3.1.2 HTML Dashboard</h5>
+<br>
+
+-	Il secondo è identificabile nel file TypeScript (fig. 6.3.1.3), in cui vengono elaborate tutte le richieste e viene svolta tutta la logica necessaria all’applicazione;
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1prxKyeov2kH74C5exogldP2-frJ91LJi>
+<h5>Figura 6.3.1.3 File TypeScript: funzioni principali</h5>
+<br>
+
+-	Il terzo ed ultimo livello è rappresentato dal service. Un service è una classe dedicata al contatto con il back end. In esso viene utilizzato il modulo HttpClient di Angular per le richieste. I services utilizzano anche un’altra tipologia di classi dette di “model” che, tendenzialmente, ricalcano fedelmente le classi DTO presenti nel back end. Le classi di service implementate (fig. 6.3.1.4 e fig. 6.3.1.5) nel progetto sono distinte per tipologia (telemetria e attuatori).
+
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1pP2UhhfSJp6UDHFyE-SbmAONUEEKqXaD>
+<h5>Figura 6.3.1.4 Telemetry Service</h5>
+<br>
+
+
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1_pb-7-OvaZnaQ9Va72SwG3o9XcUQF-Ku>
+<h5>Figura 6.3.1.5 Actuators Service</h5>
+<br>
+
+Come è possibile osservare dalle figure sopra, dopo aver definito le opzioni da includere nell’header http, 
+le classi di service sono caratterizzate dai metodi preposti alla comunicazione. Ogni metodo ritorna la risposta dei metodi 
+del modulo http coerenti con il metodo HTTP utilizzato per la definizione delle API. È fondamentale effettuare un type cast di ciò che 
+tali metodi ritornano affinché vengano mappati nel modo corretto – ricordando che i dati viaggiano in formato JSON. I metodi implementati 
+all’interno dei services ritornano un tipo “Observable” – questo permette alla classe richiamante di sottoscriversi alla richiesta. 
+Sottoscriversi ad una richiesta equivale a lanciare una chiamata asincrona in TypeScript.
+
+L’interfaccia utente viene eseguita su un server proprietario Angular: “Angular Development Server” in ascolto sulla porta 4200. 
+Al suo avvio vi è un semplice output che riporta le informazioni relative alla sola compilazione del codice e all’avvio del server 
+(fig.6.3.1.6).
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1HnTBiaWVzmhS-7RcwVMbrAWeq1o6thP8>
+<h5>Figura 6.3.1.6 Angular Development Server - Front end</h5>
+<br>
+</p>
+
+<h3>7 - VALIDAZIONE FUNZIONALE</h3>
+<p>
+    L’utente può accedere al sistema collegandosi all’indirizzo sul quale gira l’applicazione Angular (http://localhost:4200 in questo caso).
+Da subito il sistema richiede i dati di telemetria al back end, i quali vengono visualizzati nella pagina iniziale.
+Dunque, l’utente interessato può visualizzare gli ultimi dati di telemetria rilevati (fig. 7.1).
+ 
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1ei4MTp_NgtIz_rvf0uBBjYzCL2idXdgX>
+<h5>Figura 7.1 Ultimi dati rilevati</h5>
+<br>
+Come è possibile notare dalla figura sopra, il sistema, nel caso di valori anomali, avvisa l’utente utilizzatore evidenziando il dato in rosso.
+I dati si aggiornano ad intervalli di sessanta secondi. L’utente può forzare l’aggiornamento degli stessi cliccando sul tasto “Update telemetry” (fig. 7.2)
+<br>
+<img src = http://drive.google.com/uc?export=view&id=10wXOnZG7brxVMUVKZuTeHyEXuIAfd5v0>
+<h5>Figura 7.2 Aggiornamento telemetria</h5>
+<br>
+
+Il sistema si occupa dello storage delle ultime 100 letture e genera un grafico (fig. 7.3) visualizzabile dall’utente.
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1ymvrzHJhPo0ROb62eF5M09NJcEmDRG7c>
+<h5>Figura 7.3 Storico dati: grafico</h5>
+<br>
+
+L‘utente analista può ricorrere ad altre funzionalità offerte dall’interfaccia utente per raggiungere i propri scopi. 
+Come visibile dalle figura 7.4  l’utente può cliccare sul pulsante “More details” per  osservare la media (calcolata sugli ultimi 100 valori) dei dati di telemetria raccolti ed il numero di occorrenze delle misurazioni effettuate.
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1c37Xw-5se3GCOCiFuqcHn8Ms_MM_1i7i>
+<h5>Figura 7.4 More details</h5>
+<br>
+
+L’operatore interessato al controllo degli attuatori del dispositivo può leggere lo stato attuale del motore, osservando il bottone proposto dall’interfaccia grafica. L’interfaccia propone il tasto “Turn motor ON” (di colore rosso) se il motore è spento (fig. 7.5)., oppure il tasto “Turn motor OFF” (di colore verde) se il motore è accesso (fig. 7.6).
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1sMLHSayYrZGBiAzrYnDcfR58zojbz5Hj>
+<h5>Figura 7.5 Pannello controllo motore - stato motore: OFF</h5>
+<br>        
+
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1YS6aKn_fq9NQ_2grmgBk_Qo97Rf8hL68>
+<h5>Figura 7.6 Pannello controllo motore - stato motore: ON</h5>
+<br>
+
+In fine, l’operatore può comandare l’attuatore accendendo o spegnendo il motore (fig. 7.7), utilizzando il pulsante descritto in precedenza.
+
+                             
+<br>
+<img src = http://drive.google.com/uc?export=view&id=1xYogf-t8YTiaBdGj57vPtJBxnCxQBx6F>
+<h5>Figura 7.7 Accensione motore elettrico</h5>
+<br>
+
+Esemplificando e contestualizzando questo sistema in uno use case reale; un operatore potrebbe accedere al sistema, 
+osservare i dati di temperature, accorgersi che il macchinario si sta surriscaldando e attivare una ventola per il raffreddamento.
+Un’ulteriore contesto potrebbe essere quello in cui il motore svolge la funzionalità principale del macchinario. 
+In questo caso, l’utente generico, osservando temperature troppo elevate potrebbe direttamente spegnere il macchinario dall’interfaccia 
+utente con l’apposito pulsante. In questa ipotesi i dati saranno ancora visibili sulla dashboard per eventuali analisi.
+</p>
+<h3>8 - CONCLUSIONI E SVILUPPI FUTURI</h3>
+<p>
+    L’obiettivo del progetto era quello di implementare un sistema prettamente rivolto alle industrie. 
+    In sennò a ciò, l’utilizzo del protocollo Modbus è stata una prerogativa fondamentale.
+Il protocollo di comunicazione industriale sopra menzionato resiste ancora oggi per la sua semplicità, che si riversa anche nelle 
+librerie che permettono la sua implementazione.
+PyModbus (libreria utilizzata in Python) permette la quasi totale astrazione dai capisaldi imposti dallo stesso protocollo 
+(funzioni, registri, ecc). 
+In Java, specialmente se si intende lavorare con ModbusTCP, non si ha la necessità di installare alcun tipo di libreria che fa 
+espressamente riferimento al protocollo industriale. È sufficiente gestire la comunicazione utilizzando le librerie presenti in Java 
+(Java.net). Le altre librerie utilizzate sono inerenti alla gestione e all’ordinamento del flusso di bit in entrata o in uscita.
+Alcune criticità riscontrate sono inerenti alla gestione del socket: nel caso di trasmissione fortemente spinta (aggiornamenti ogni secondo),
+la comunicazione diventa critica e poco stabile;  il socket tende a chiudersi inaspettatamente. 
+Un’ altra questione, meno rilevante, riguarda il sensore DHT11.  
+In alcuni casi, esso tende a restituire valori praticamente irreali. 
+In realtà, questa è una questione marginale considerando le intenzioni del progetto.
+Un’ estensione del progetto è sicuramente l’integrazione dello stesso con il protocollo MQTT potendo coadiuvare la 
+popolarità di Modbus in ambito industriale con la versatilità di MQTT.
+Inoltre l’integrazione del macchinario simulato con servizi Cloud offerti da Microsoft o Amazon rappresenta sicuramente un 
+ottimo spunto di partenza per progetti futuri.
+</p>
 </body>
 </html>
+
